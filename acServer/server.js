@@ -14,7 +14,7 @@ const State = mongoose.model(
     temperature: { type: Number, min: 16, max: 30 },
     mode: { enum: ["heat", "cool", "dry", "fan", "auto"], type: String },
     swing: { type: Boolean },
-    powerMode: { enum: ["eco", "quiet", "powerful"], type: String },
+    powerMode: { enum: ["eco", "quiet", "powerful", "default"], type: String },
     display: { type: Boolean },
   })
 );

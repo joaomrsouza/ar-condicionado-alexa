@@ -62,7 +62,7 @@ JSONVar getWebState()
 
   if (!connection)
   {
-    Serial.println("Conection Error while getting web state.");
+    Serial.println("Connection Error while getting web state.");
     result["success"] = false;
     return result;
   }
@@ -98,10 +98,35 @@ JSONVar getState()
 {
   Serial.println("Getting device state...");
   JSONVar state;
+
   state["powerState"] = ac.getPower();
-  state["fan"] = ac.getFan();
+
+  uint8_t fanInt = ac.getFan();
+  if (fanInt == kSamsungAcFanAuto)
+    state["fan"] = "auto";
+  else if (fanInt == kSamsungAcFanLow)
+    state["fan"] = "low";
+  else if (fanInt == kSamsungAcFanMed)
+    state["fan"] = "medium";
+  else if (fanInt == kSamsungAcFanHigh)
+    state["fan"] = "high";
+  else if (fanInt == kSamsungAcFanTurbo)
+    state["fan"] = "turbo";
+
   state["temperature"] = ac.getTemp();
-  state["mode"] = ac.getMode();
+
+  uint8_t modeInt = ac.getMode();
+  if (modeInt == kSamsungAcCool)
+    state["mode"] = "cool";
+  else if (modeInt == kSamsungAcDry)
+    state["mode"] = "dry";
+  else if (modeInt == kSamsungAcFan)
+    state["mode"] = "fan";
+  else if (modeInt == kSamsungAcHeat)
+    state["mode"] = "heat";
+  else if (modeInt == kSamsungAcAuto)
+    state["mode"] = "auto";
+
   state["swing"] = ac.getSwing();
 
   String powerMode;
@@ -109,10 +134,12 @@ JSONVar getState()
     powerMode = "eco";
   else if (ac.getQuiet())
     powerMode = "quiet";
-  else
+  else if (ac.getPowerful())
     powerMode = "powerful";
-
+  else
+    powerMode = "default";
   state["powerMode"] = powerMode;
+
   state["display"] = ac.getDisplay();
   return state;
 }
@@ -213,28 +240,27 @@ void processState(JSONVar newState)
   Serial.println(swing);
 
   Serial.print("Power Mode: ");
+  ac.setEcono(false);
+  ac.setQuiet(false);
+  ac.setPowerful(false);
   String powerMode = (String)newState["powerMode"];
   if (powerMode == "eco")
   {
-    ac.setPowerful(false);
-    ac.setQuiet(false);
     ac.setEcono(true);
     Serial.println("Eco");
   }
   else if (powerMode == "quiet")
   {
-    ac.setPowerful(false);
-    ac.setEcono(false);
     ac.setQuiet(true);
     Serial.println("Quiet");
   }
   else if (powerMode == "powerful")
   {
-    ac.setEcono(false);
-    ac.setQuiet(false);
     ac.setPowerful(true);
     Serial.println("Powerful");
   }
+  else if (powerMode == "default")
+    Serial.println("Default");
 
   Serial.print("Display: ");
   bool display = (bool)newState["display"];
@@ -266,14 +292,3 @@ void loop()
   }
   Serial.println("========================================");
 }
-
-// server.on("/LED_BUILTIN_on", []() {
-//   digitalWrite(LED_BUILTIN, 1);
-//   Serial.println("on");
-//   handleRoot();
-// });
-// server.on("/LED_BUILTIN_off", []() {
-//   digitalWrite(LED_BUILTIN, 0);
-//   Serial.println("off");
-//   handleRoot();
-// });
