@@ -22,7 +22,7 @@ void setup()
 {
   Serial.begin(115200);
 
-  // Connectando no Wifi
+  // Conectando no Wifi
   Serial.println();
   Serial.print("Configuring access point...");
   WiFi.begin(ssid, password);
@@ -42,9 +42,9 @@ void setup()
   ac.off();
   ac.setFan(kSamsungAcFanAuto);
   ac.setMode(kSamsungAcCool);
-  ac.setEcono(true);
   ac.setTemp(26);
   ac.setSwing(true);
+  ac.setEcono(true);
 }
 
 JSONVar getWebState()
@@ -58,9 +58,9 @@ JSONVar getWebState()
   HTTPClient https;
   JSONVar result;
 
-  bool conection = https.begin(*client, (String)SECRET_API_ENDPOINT + "/esp");
+  bool connection = https.begin(*client, (String)SECRET_API_ENDPOINT + "/esp");
 
-  if (!conection)
+  if (!connection)
   {
     Serial.println("Conection Error while getting web state.");
     result["success"] = false;
@@ -98,17 +98,28 @@ JSONVar getState()
 {
   Serial.println("Getting device state...");
   JSONVar state;
-  state["powerState"] = (bool)ac.getPower();
+  state["powerState"] = ac.getPower();
+  state["fan"] = ac.getFan();
+  state["temperature"] = ac.getTemp();
+  state["mode"] = ac.getMode();
+  state["swing"] = ac.getSwing();
+
+  String powerMode;
+  if (ac.getEcono())
+    powerMode = "eco";
+  else if (ac.getQuiet())
+    powerMode = "quiet";
+  else
+    powerMode = "powerful";
+
+  state["powerMode"] = powerMode;
+  state["display"] = ac.getDisplay();
   return state;
 }
 
 bool stateChanged(JSONVar oldState, JSONVar newState)
 {
   Serial.println("Checking for state changes...");
-  newState["_id"] = undefined;
-  newState["__v"] = undefined;
-  newState["key"] = undefined;
-
   Serial.print(JSON.stringify(oldState));
   Serial.print(" != ");
   Serial.println(JSON.stringify(newState));
@@ -127,17 +138,108 @@ void processState(JSONVar newState)
 {
   Serial.println("Processing new state:");
 
-  Serial.println("Power State");
-  if ((bool)newState["powerState"] == true)
+  Serial.print("Power State: ");
+  bool powerState = (bool)newState["powerState"];
+  if (powerState)
   {
     ac.on();
-    Serial.println("- Turn On");
+    Serial.println("On");
   }
-  else if ((bool)newState["powerState"] == false)
+  else
   {
     ac.off();
-    Serial.println("- Turn Off");
+    Serial.println("Off");
   }
+
+  Serial.print("Fan State: ");
+  String fanState = (String)newState["fan"];
+  if (fanState == "auto")
+  {
+    ac.setFan(kSamsungAcFanAuto);
+    Serial.println("Auto");
+  }
+  else if (fanState == "low")
+  {
+    ac.setFan(kSamsungAcFanLow);
+    Serial.println("Low");
+  }
+  else if (fanState == "medium")
+  {
+    ac.setFan(kSamsungAcFanMed);
+    Serial.println("Medium");
+  }
+  else if (fanState == "high")
+  {
+    ac.setFan(kSamsungAcFanHigh);
+    Serial.println("High");
+  }
+  else if (fanState == "turbo")
+  {
+    ac.setFan(kSamsungAcFanTurbo);
+    Serial.println("Turbo");
+  }
+
+  Serial.print("Temperature: ");
+  int temperature = (int)newState["temperature"];
+  ac.setTemp(temperature);
+  Serial.println(temperature);
+
+  Serial.print("Mode: ");
+  String mode = (String)newState["mode"];
+  if (mode == "cool")
+  {
+    ac.setMode(kSamsungAcCool);
+    Serial.println("Cool");
+  }
+  else if (mode == "dry")
+  {
+    ac.setMode(kSamsungAcDry);
+    Serial.println("Dry");
+  }
+  else if (mode == "fan")
+  {
+    ac.setMode(kSamsungAcFan);
+    Serial.println("Fan");
+  }
+  else if (mode == "heat")
+  {
+    ac.setMode(kSamsungAcHeat);
+    Serial.println("Heat");
+  }
+
+  Serial.print("Swing: ");
+  bool swing = (bool)newState["swing"];
+  ac.setSwing(swing);
+  Serial.println(swing);
+
+  Serial.print("Power Mode: ");
+  String powerMode = (String)newState["powerMode"];
+  if (powerMode == "eco")
+  {
+    ac.setPowerful(false);
+    ac.setQuiet(false);
+    ac.setEcono(true);
+    Serial.println("Eco");
+  }
+  else if (powerMode == "quiet")
+  {
+    ac.setPowerful(false);
+    ac.setEcono(false);
+    ac.setQuiet(true);
+    Serial.println("Quiet");
+  }
+  else if (powerMode == "powerful")
+  {
+    ac.setEcono(false);
+    ac.setQuiet(false);
+    ac.setPowerful(true);
+    Serial.println("Powerful");
+  }
+
+  Serial.print("Display: ");
+  bool display = (bool)newState["display"];
+  ac.setDisplay(display);
+  Serial.println(display);
 
   // Enviar state pro ar-condicionado
   Serial.println("Sending state to device...");
